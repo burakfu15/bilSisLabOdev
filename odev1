@@ -1,0 +1,96 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas
+
+# https://towardsdatascience.com/perceptrons-logical-functions-and-the-xor-problem-37ca5025790a
+# sitesinden gördüğüm XOR kapısını referans alarak aşağıda bir XOR kapısı uyarlamaya çalıştım.
+# Yapıyı genel itibari ile özetlemek gerekirse;
+# XOR(x1, x2) = AND(NOT(AND(x1, x2)), OR(x1, x2)) olarak gösterebiliriz.
+# Bunu sağlamak için çıkışları ve girişleri belli olduğundan dolayı gerekli
+# dizi yapısını aşağıda oluşturdum.
+
+giris = np.array([[1, 1], [1, 0], [0, 1], [0, 0]])  # giriş
+
+cikisAND = np.array([1, 0, 0, 0])  # and kapısının çıktısı girişe göre
+cikisOR = np.array([1, 1, 1, 0])  # or kapısının çıktısı girişe göre
+
+girisNOT = np.array([[1], [0]])  # yukarıdaki formülasyondaki NOT kapısını
+cikisNOT = np.array([0, 1])  # temsilen 1 ise 0, 0 ise 1 değerlerini döndüren bir dizi yapısı oluşturduk.
+
+
+
+# np.array([1, 1, 1, 0]) #or
+# np.array([0, 1, 1, 0]) #x_or
+
+#plt.title('VE KAPISI', fontsize=16)
+#plt.scatter(giris[:, 0], giris[:, 1], s=400, c=cikisAND)
+#plt.grid()
+#plt.show()
+
+
+class Perceptron(object):
+    def __init__(self, ogrenme_orani=0.1, iter_sayisi=10):
+        self.ogrenme_orani = ogrenme_orani
+        self.iter_sayisi = iter_sayisi
+
+    def ogren(self, X, y):
+        self.w = np.zeros(1 + X.shape[1])
+        # self.w = np.random.rand((1 + X.shape[1])) * 2
+        self.hatalar = []
+        for _ in range(self.iter_sayisi):
+            hata = 0
+            for xi, hedef in zip(X, y):
+                degisim = self.ogrenme_orani * (hedef - self.tahmin(xi))
+                self.w[1:] += degisim * xi
+                self.w[0] += degisim
+                hata += int(degisim != 0.0)
+            self.hatalar.append(hata)
+        return self
+
+    def net_input(self, X):
+        return np.dot(X, self.w[1:]) + self.w[0] #matrislerin çarpımı
+
+    def tahmin(self, x):
+        return np.where(self.net_input(x) >= 0.0, 1, 0)
+
+
+siniflandirici = Perceptron(ogrenme_orani=0.1, iter_sayisi=10)
+siniflandirici.ogren(giris, cikisAND)
+
+print("Sınıflandırıcı.w => ",siniflandirici.w)
+
+print("Sınıflandırıcı.hatalar => ",siniflandirici.hatalar)
+
+plt.plot(range(1, len(siniflandirici.hatalar) + 1), siniflandirici.hatalar)
+plt.xlabel('Deneme')
+plt.ylabel('Hatalı tahmin sayısı')
+plt.show()
+
+#XOR Kapısı
+def XOR_GATE(girdi):
+    # Nesneleri oluşturduk
+    AND = Perceptron(ogrenme_orani=0.1, iter_sayisi=10)
+    OR = Perceptron(ogrenme_orani=0.1, iter_sayisi=10)
+
+    NOT = Perceptron(ogrenme_orani=0.1, iter_sayisi=10)
+
+    # verileri öğrenmeye gönderdik
+    AND.ogren(giris, cikisAND)
+    OR.ogren(giris, cikisOR)
+
+    NOT.ogren(girisNOT, cikisNOT)
+
+    # XOR(x1, x2) = AND(NOT(AND(x1, x2)), OR(x1, x2)) yapısını aşağıdaki kısımlarda görebilirsiniz.
+    # Tahmine dayalı olarak, XOR kapısına girdi olarak gelen elemanlara bağlı olarak değer döndüren yapıyı oluşturduk
+
+    ciktiAND = AND.tahmin(girdi) # AND(x1, x2)
+    ciktiAND_NOT = NOT.tahmin(ciktiAND) # NOT(AND(x1, x2))
+    ciktiOR = OR.tahmin(girdi) # OR(x1, x2)
+
+    newGirdi = np.array([ciktiAND_NOT[0], ciktiOR])
+    return AND.tahmin(newGirdi)
+
+# XOR_GATE metodunun kontrolü
+print('XOR_GATE')
+for eleman in giris:
+  print(eleman ," ==> ",XOR_GATE(eleman))
